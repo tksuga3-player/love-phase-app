@@ -4,7 +4,8 @@ import streamlit.components.v1 as components
 
 # --- Dify API設定 ---
 DIFY_API_URL = "https://api.dify.ai/v1/completion-messages"
-DIFY_API_KEY = "app-ahB9YJx88eirAdUTraAmpfdW" # あなたのAPIキーに変更してください
+# 🛑 修正箇所: APIキーを直接書かず、StreamlitのSecretsから読み込むように変更
+DIFY_API_KEY = st.secrets["DIFY_API_KEY"]
 
 def call_dify_api(user_text):
     headers = {
@@ -82,7 +83,7 @@ if st.button("診断する", use_container_width=True, type="primary"):
         
         st.success("✅ 分析が完了しました。")
         st.info(diagnosis_result)
-        m
+        
         # 回答の下にもう一度注意書きを表示
         st.markdown(disclaimer_text, unsafe_allow_html=True)
 else:
