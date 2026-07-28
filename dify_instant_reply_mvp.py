@@ -64,7 +64,7 @@ user_consultation = st.text_area(
     "📝 そのときの出来事や状況を入力してください",
     height=250,
     placeholder="""例：マチアプで出会ったアラサーの女性。2回目のデートの帰り道で意を決して告白したら「今はそういうのは考えられない」と強めに言われてそそくさと解散した。  
-デート中、彼女は笑ってくれてたし、会話は盛り上がっていたはずなのに何が悪かったのか分からない。誠実さが足りなかったのか、もう少し会う回数を重ねてからすべきだったのか。  
+デート中、彼女は笑ってくれてたし、会話は盛り上がっていたはずなのに何が悪かったのか分からない。誠実さが足りなかったのか、もう少し会う回数を重ねるべきだったのか。  
 次のデートに誘ったら「今は仕事が忙しい時期だから」と言われる。脈がないなら引くべきなのか。"""
 )
 
@@ -86,8 +86,6 @@ if st.button("診断する", use_container_width=True, type="primary"):
         st.success("✅ 分析が完了しました。")
         st.info(diagnosis_result)
         
-        # 回答の下にもう一度注意書きを表示
-        st.markdown(disclaimer_text, unsafe_allow_html=True)
 else:
     # 初期状態（ボタンが押される前）にボタンの下に表示
     st.markdown(disclaimer_text, unsafe_allow_html=True)
