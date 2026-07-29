@@ -61,45 +61,52 @@ def call_dify_api(user_text):
 
 def format_diagnosis_result(raw_text):
     """
-    Difyの回答を次の形式に整える。
-
+    表示ルール：
     ・見出しの直前だけ空行を1行入れる
     ・見出し直後には空行を入れない
-    ・番号付き項目の間には空行を入れない
-    ・箇条書き項目の間には空行を入れない
+    ・番号や箇条書きの間には空行を入れない
     """
 
     if not raw_text:
         return "回答を取得できませんでした。"
 
-    # Windows・Mac・Linuxの改行コードを統一
-    text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
+    # 通常とは異なる改行文字もすべて統一
+    text = (
+        raw_text
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\u2028", "\n")
+        .replace("\u2029", "\n")
+        .replace("\u0085", "\n")
+    )
 
-    # 各行の前後にある不要な空白を削除
-    lines = [line.strip() for line in text.split("\n")]
+    # splitlines()であらゆる改行を分割
+    original_lines = text.splitlines()
 
-    formatted_lines = []
+    cleaned_lines = []
 
-    for line in lines:
-        # 元の空行は一度すべて無視する
+    for original_line in original_lines:
+        line = original_line.strip()
+
+        # 空白だけの行はすべて削除
         if not line:
             continue
 
-        # 【見出し】の直前だけ空行を1行追加
+        # 見出しの直前だけ空行を1つ追加
         if re.fullmatch(r"【[^】]+】", line):
-            if formatted_lines and formatted_lines[-1] != "":
-                formatted_lines.append("")
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
 
-        formatted_lines.append(line)
+        cleaned_lines.append(line)
 
-    # 先頭や末尾に残った空行を削除
-    while formatted_lines and formatted_lines[0] == "":
-        formatted_lines.pop(0)
+    # 先頭・末尾の空行を削除
+    while cleaned_lines and cleaned_lines[0] == "":
+        cleaned_lines.pop(0)
 
-    while formatted_lines and formatted_lines[-1] == "":
-        formatted_lines.pop()
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
 
-    return "\n".join(formatted_lines)
+    return "\n".join(cleaned_lines)
 
 
 def display_diagnosis_result(result_text):
@@ -116,7 +123,7 @@ def display_diagnosis_result(result_text):
         'color:#0055a5;'
         'padding:20px;'
         'border-radius:10px;'
-        'line-height:1.75;'
+        'line-height:1.6;'
         'white-space:pre-wrap;'
         'font-size:16px;'
         'overflow-wrap:anywhere;'
