@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 import html
 import streamlit.components.v1 as components
 
@@ -93,24 +94,53 @@ if st.button("診断する", use_container_width=True, type="primary"):
 
         st.success("✅ 分析が完了しました。")
 
-        # AI回答を安全なHTML文字列に変換
-        safe_result = html.escape(diagnosis_result)
+# 改行コードを統一
+formatted_result = diagnosis_result.replace("\r\n", "\n").replace("\r", "\n")
 
-        # 改行をそのまま維持して、青い回答欄に表示
-        st.markdown(
-            f"""
-            <div style="
-                background-color: #e8f2ff;
-                color: #0055a5;
-                padding: 20px;
-                border-radius: 10px;
-                line-height: 1.75;
-                white-space: pre-wrap;
-                font-size: 16px;
-            ">{safe_result}</div>
-            """,
-            unsafe_allow_html=True
-        )
+# 行末の余分な空白を削除
+formatted_result = re.sub(r"[ \t]+\n", "\n", formatted_result)
+
+# 見出し直後の空行を削除
+formatted_result = re.sub(
+    r"(【[^】]+】)\n(?:[ \t]*\n)+",
+    r"\1\n",
+    formatted_result
+)
+
+# 番号・箇条書き項目の直前にある空行を削除
+formatted_result = re.sub(
+    r"\n(?:[ \t]*\n)+(?=[ \t]*(?:\d+\.\s|・|•))",
+    "\n",
+    formatted_result
+)
+
+# 各見出しの直前だけ、空行を1行入れる
+formatted_result = re.sub(
+    r"\n(?:[ \t]*\n)*(?=【[^】]+】)",
+    "\n\n",
+    formatted_result
+)
+
+# 連続する空行は最大1行に制限
+formatted_result = re.sub(r"\n{3,}", "\n\n", formatted_result)
+
+# HTMLとして安全に変換
+safe_result = html.escape(formatted_result.strip())
+
+st.markdown(
+    f"""
+    <div style="
+        background-color: #e8f2ff;
+        color: #0055a5;
+        padding: 20px;
+        border-radius: 10px;
+        line-height: 1.75;
+        white-space: pre-wrap;
+        font-size: 16px;
+    ">{safe_result}</div>
+    """,
+    unsafe_allow_html=True
+)
 
 else:
     st.markdown(disclaimer_text, unsafe_allow_html=True)
