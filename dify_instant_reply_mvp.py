@@ -65,12 +65,13 @@ def format_diagnosis_result(raw_text):
     ・見出しの直前だけ空行を1行入れる
     ・見出し直後には空行を入れない
     ・番号や箇条書きの間には空行を入れない
+    ・末尾の誘導文の直前に空行を1行入れる
     """
 
     if not raw_text:
         return "回答を取得できませんでした。"
 
-    # 通常とは異なる改行文字もすべて統一
+    # 改行コードを統一
     text = (
         raw_text
         .replace("\r\n", "\n")
@@ -80,31 +81,30 @@ def format_diagnosis_result(raw_text):
         .replace("\u0085", "\n")
     )
 
-    # splitlines()であらゆる改行を分割
     original_lines = text.splitlines()
-
     cleaned_lines = []
 
     for original_line in original_lines:
         line = original_line.strip()
 
-        # 空白だけの行はすべて削除
+        # 空白だけの行は削除
         if not line:
             continue
 
-        # 見出しの直前だけ空行を1つ追加
+        # 見出しの直前に空行を1つ追加
         if re.fullmatch(r"【[^】]+】", line):
             if cleaned_lines and cleaned_lines[-1] != "":
                 cleaned_lines.append("")
 
-# 誘導文の直前に空行を1行入れる
-if line.startswith("多くの男性は努力していないのではなく"):
-    if cleaned_lines and cleaned_lines[-1] != "":
-        cleaned_lines.append("")
+        # 誘導文の直前に空行を1つ追加
+        if line.startswith("多くの男性は努力していないのではなく"):
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
 
+        # すべての通常行を追加
         cleaned_lines.append(line)
 
-    # 先頭・末尾の空行を削除
+    # 先頭と末尾の空行を削除
     while cleaned_lines and cleaned_lines[0] == "":
         cleaned_lines.pop(0)
 
