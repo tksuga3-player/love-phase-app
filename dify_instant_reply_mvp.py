@@ -45,7 +45,7 @@ components.html(
 
 # --- UI設計 ---
 st.title("🧬 無料！")
-st.subheader("恋愛を励ますAIではない。デバッグするAIだ")
+st.subheader("恋愛を励ますAIではない。デバッグするAIだ。")
 st.markdown("""
 「なぜ、あのときうまくいかなかったのか」を、進化心理学モデルで構造的に分析します。
 """)
