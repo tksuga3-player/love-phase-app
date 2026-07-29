@@ -1,146 +1,281 @@
-import streamlit as st
-import requests
-import re
 import html
+import re
+
+import requests
+import streamlit as st
 import streamlit.components.v1 as components
 
-# --- Dify API設定 ---
+
+# ==================================================
+# Dify API設定
+# ==================================================
+
 DIFY_API_URL = "https://api.dify.ai/v1/completion-messages"
-# 🛑 修正箇所: APIキーを直接書かず、StreamlitのSecretsから読み込むように変更
 DIFY_API_KEY = st.secrets["DIFY_API_KEY"]
 
+
 def call_dify_api(user_text):
+    """入力内容をDifyへ送り、回答文を取得する。"""
+
     headers = {
         "Authorization": f"Bearer {DIFY_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
+
     payload = {
-        "inputs": {"user_input": user_text},
-        "response_mode": "blocking", 
-        "user": "streamlit-web-user" 
+        "inputs": {
+            "user_input": user_text
+        },
+        "response_mode": "blocking",
+        "user": "streamlit-web-user",
     }
+
     try:
-        response = requests.post(DIFY_API_URL, headers=headers, json=payload)
-        response.raise_for_status() 
+        response = requests.post(
+            DIFY_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=120,
+        )
+
+        response.raise_for_status()
         result_data = response.json()
-        return result_data.get("answer", "エラー：回答を抽出できませんでした。")
-    except requests.exceptions.RequestException as e:
-        return f"通信エラーが発生しました。設定を確認してください。\n詳細: {e}"
 
-# --- ページ設定と翻訳ブロック ---
-# page_title はブラウザのタブに表示される名前です。自由に変更してください。
-st.set_page_config(page_title="進化心理学 恋愛フェーズ診断", page_icon="🧬", layout="centered")
+        return result_data.get(
+            "answer",
+            "エラー：回答を抽出できませんでした。"
+        )
 
-# 【修正版】自動翻訳暴走対策
-# lang="ja" の動的付与はChromeを混乱させるため行わず、シンプルな翻訳禁止指定のみに留めます。
+    except requests.exceptions.Timeout:
+        return (
+            "通信がタイムアウトしました。\n"
+            "時間を置いて、もう一度お試しください。"
+        )
+
+    except requests.exceptions.RequestException as error:
+        return (
+            "通信エラーが発生しました。設定を確認してください。\n"
+            f"詳細：{error}"
+        )
+
+
+def format_diagnosis_result(raw_text):
+    """
+    Difyの回答を次の形式に整える。
+
+    ・見出しの直前だけ空行を1行入れる
+    ・見出し直後には空行を入れない
+    ・番号付き項目の間には空行を入れない
+    ・箇条書き項目の間には空行を入れない
+    """
+
+    if not raw_text:
+        return "回答を取得できませんでした。"
+
+    # Windows・Mac・Linuxの改行コードを統一
+    text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # 各行の前後にある不要な空白を削除
+    lines = [line.strip() for line in text.split("\n")]
+
+    formatted_lines = []
+
+    for line in lines:
+        # 元の空行は一度すべて無視する
+        if not line:
+            continue
+
+        # 【見出し】の直前だけ空行を1行追加
+        if re.fullmatch(r"【[^】]+】", line):
+            if formatted_lines and formatted_lines[-1] != "":
+                formatted_lines.append("")
+
+        formatted_lines.append(line)
+
+    # 先頭や末尾に残った空行を削除
+    while formatted_lines and formatted_lines[0] == "":
+        formatted_lines.pop(0)
+
+    while formatted_lines and formatted_lines[-1] == "":
+        formatted_lines.pop()
+
+    return "\n".join(formatted_lines)
+
+
+def display_diagnosis_result(result_text):
+    """整形した診断結果を青いボックス内に表示する。"""
+
+    formatted_result = format_diagnosis_result(result_text)
+
+    # AI回答を安全なHTML文字列へ変換
+    safe_result = html.escape(formatted_result)
+
+    answer_html = (
+        '<div style="'
+        'background-color:#e8f2ff;'
+        'color:#0055a5;'
+        'padding:20px;'
+        'border-radius:10px;'
+        'line-height:1.75;'
+        'white-space:pre-wrap;'
+        'font-size:16px;'
+        'overflow-wrap:anywhere;'
+        '">'
+        f"{safe_result}"
+        "</div>"
+    )
+
+    st.markdown(answer_html, unsafe_allow_html=True)
+
+
+# ==================================================
+# ページ設定
+# ==================================================
+
+st.set_page_config(
+    page_title="進化心理学 恋愛フェーズ診断",
+    page_icon="🧬",
+    layout="centered",
+)
+
+
+# ==================================================
+# Chrome自動翻訳対策
+# ==================================================
+
 components.html(
     """
     <script>
-        var doc = window.parent.document.documentElement;
-        doc.setAttribute("translate", "no");
-        doc.classList.add("notranslate");
+        const documentElement =
+            window.parent.document.documentElement;
+
+        documentElement.setAttribute("translate", "no");
+        documentElement.classList.add("notranslate");
     </script>
     """,
     height=0,
     width=0,
 )
 
-# --- UI設計 ---
+
+# ==================================================
+# UI
+# ==================================================
+
 st.title("🧬 無料！")
-st.subheader("恋愛を励ますAIではない。デバッグするAIだ。")
-st.markdown("""
-「なぜ、あのときうまくいかなかったのか」を、進化心理学モデルで構造的に分析します。
-""")
+
+st.subheader(
+    "恋愛を励ますAIではない。デバッグするAIだ。"
+)
+
+st.markdown(
+    """
+「なぜ、あのときうまくいかなかったのか」を、
+進化心理学モデルで構造的に分析します。
+"""
+)
 
 st.divider()
 
-# expanderのデフォルトを閉じた状態に変更 (expanded=False)
-with st.expander("💡 回答の精度を高めるために", expanded=False):
-    st.markdown("""
-    以下の3点を含めて自由記述していただくと、より残酷なまでにボトルネックが判明します。
-    1. **相手との現在の関係性**（例：マチアプで出会った、職場で普段話してる同僚等）
-    2. **直近の具体的な出来事**（例：ご飯に誘ったら「忙しい」と言われた、デート中の言動等）
-    3. **あなたが最終的にどうなりたいか**
-    """)
+
+with st.expander(
+    "💡 回答の精度を高めるために",
+    expanded=False,
+):
+    st.markdown(
+        """
+以下の3点を含めて自由記述していただくと、
+より正確にボトルネックを分析できます。
+
+1. **相手との現在の関係性**  
+   例：マッチングアプリで出会った、職場の同僚など
+
+2. **直近の具体的な出来事**  
+   例：食事に誘ったら「忙しい」と言われたなど
+
+3. **あなたが最終的にどうなりたいか**
+"""
+    )
+
 
 user_consultation = st.text_area(
     "📝 そのときの出来事や状況を入力してください",
     height=250,
-    placeholder="""例：マチアプで出会ったアラサーの女性。2回目のデートの帰り道で意を決して告白したら「今はそういうのは考えられない」と強めに言われてそそくさと解散した。  
-デート中、彼女は笑ってくれてたし、会話は盛り上がっていたはずなのに何が悪かったのか分からない。誠実さが足りなかったのか、もう少し会う回数を重ねるべきだったのか。  
-次のデートに誘ったら「今は仕事が忙しい時期だから」と言われる。脈がないなら引くべきなのか。"""
+    placeholder=(
+        "例：マッチングアプリで出会ったアラサーの女性。"
+        "2回目のデートの帰り道で告白したら、"
+        "「今はそういうのは考えられない」と強めに言われ、"
+        "そそくさと解散した。\n\n"
+        "デート中、彼女は笑ってくれていたし、"
+        "会話は盛り上がっていたはずなのに、"
+        "何が悪かったのか分からない。\n\n"
+        "次のデートに誘ったら、"
+        "「今は仕事が忙しい時期だから」と言われた。"
+        "脈がないなら引くべきなのか。"
+    ),
 )
 
-# 注意書き（ディスクレーマー）を変数として定義
-disclaimer_text = "<div style='text-align: center; font-size: 12px; color: gray; margin-top: 8px;'>いただいた相談は、個人が特定できない形で事例として紹介する場合があります。</div>"
 
-if st.button("診断する", use_container_width=True, type="primary"):
-    if len(user_consultation) < 20:
+disclaimer_text = (
+    "<div style='"
+    "text-align:center;"
+    "font-size:12px;"
+    "color:gray;"
+    "margin-top:8px;"
+    "'>"
+    "いただいた相談は、個人が特定できない形で"
+    "事例として紹介する場合があります。"
+    "</div>"
+)
+
+
+# ==================================================
+# 診断処理
+# ==================================================
+
+diagnosis_button = st.button(
+    "診断する",
+    use_container_width=True,
+    type="primary",
+)
+
+
+if diagnosis_button:
+
+    if len(user_consultation.strip()) < 20:
         st.error(
             "診断には詳細な情報が必要です。"
             "もう少し具体的に状況を教えてください。"
         )
-        st.markdown(disclaimer_text, unsafe_allow_html=True)
+
+        st.markdown(
+            disclaimer_text,
+            unsafe_allow_html=True,
+        )
 
     else:
-        st.markdown(disclaimer_text, unsafe_allow_html=True)
+        st.markdown(
+            disclaimer_text,
+            unsafe_allow_html=True,
+        )
 
         with st.spinner(
-            "進化心理学のデータベースと照合中...\n"
+            "進化心理学のデータベースと照合中です。"
             "あなたの行動履歴からフェーズを計算しています"
             "（約10〜20秒かかります）"
         ):
-            diagnosis_result = call_dify_api(user_consultation)
+            diagnosis_result = call_dify_api(
+                user_consultation.strip()
+            )
 
         st.success("✅ 分析が完了しました。")
 
-# 改行コードを統一
-formatted_result = diagnosis_result.replace("\r\n", "\n").replace("\r", "\n")
-
-# 行末の余分な空白を削除
-formatted_result = re.sub(r"[ \t]+\n", "\n", formatted_result)
-
-# 見出し直後の空行を削除
-formatted_result = re.sub(
-    r"(【[^】]+】)\n(?:[ \t]*\n)+",
-    r"\1\n",
-    formatted_result
-)
-
-# 番号・箇条書き項目の直前にある空行を削除
-formatted_result = re.sub(
-    r"\n(?:[ \t]*\n)+(?=[ \t]*(?:\d+\.\s|・|•))",
-    "\n",
-    formatted_result
-)
-
-# 各見出しの直前だけ、空行を1行入れる
-formatted_result = re.sub(
-    r"\n(?:[ \t]*\n)*(?=【[^】]+】)",
-    "\n\n",
-    formatted_result
-)
-
-# 連続する空行は最大1行に制限
-formatted_result = re.sub(r"\n{3,}", "\n\n", formatted_result)
-
-# HTMLとして安全に変換
-safe_result = html.escape(formatted_result.strip())
-
-st.markdown(
-    f"""
-    <div style="
-        background-color: #e8f2ff;
-        color: #0055a5;
-        padding: 20px;
-        border-radius: 10px;
-        line-height: 1.75;
-        white-space: pre-wrap;
-        font-size: 16px;
-    ">{safe_result}</div>
-    """,
-    unsafe_allow_html=True
-)
+        display_diagnosis_result(
+            diagnosis_result
+        )
 
 else:
-    st.markdown(disclaimer_text, unsafe_allow_html=True)
+    st.markdown(
+        disclaimer_text,
+        unsafe_allow_html=True,
+    )
