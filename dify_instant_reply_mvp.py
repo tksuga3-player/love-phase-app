@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 import streamlit.components.v1 as components
 
 # --- Dify API設定 ---
@@ -88,9 +89,17 @@ if st.button("診断する", use_container_width=True, type="primary"):
         st.success("✅ 分析が完了しました。")
 
         # Difyの改行を画面上でも維持する
-        formatted_result = diagnosis_result.replace("\n", "  \n")
+        # 見出し直後の余分な空行だけ削除する
+        formatted_result = re.sub(
+            r"(【[^】]+】)\s*\n\s*\n+",
+            r"\1\n",
+            diagnosis_result
+        )
 
-        st.info(formatted_result)
+# 通常改行をStreamlit上でも表示する
+formatted_result = formatted_result.replace("\n", "  \n")
+
+st.info(formatted_result)
 
 else:
     st.markdown(disclaimer_text, unsafe_allow_html=True)
