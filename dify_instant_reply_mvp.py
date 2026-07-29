@@ -75,31 +75,35 @@ disclaimer_text = "<div style='text-align: center; font-size: 12px; color: gray;
 
 if st.button("診断する", use_container_width=True, type="primary"):
     if len(user_consultation) < 20:
-        st.error("診断には詳細な情報が必要です。もう少し具体的に状況を教えてください。")
+        st.error(
+            "診断には詳細な情報が必要です。"
+            "もう少し具体的に状況を教えてください。"
+        )
         st.markdown(disclaimer_text, unsafe_allow_html=True)
+
     else:
         st.markdown(disclaimer_text, unsafe_allow_html=True)
 
         with st.spinner(
-            "進化心理学のデータベースと照合中... \n"
-            "あなたの行動履歴からフェーズを計算しています（約10〜20秒かかります）"
+            "進化心理学のデータベースと照合中...\n"
+            "あなたの行動履歴からフェーズを計算しています"
+            "（約10〜20秒かかります）"
         ):
             diagnosis_result = call_dify_api(user_consultation)
 
         st.success("✅ 分析が完了しました。")
 
-        # Difyの改行を画面上でも維持する
-        # 見出し直後の余分な空行だけ削除する
+        # 見出し直後の余分な空行だけ削除
         formatted_result = re.sub(
-            r"(【[^】]+】)\s*\n\s*\n+",
+            r"(【[^】]+】)[ \t]*\n[ \t]*\n+",
             r"\1\n",
             diagnosis_result
         )
 
-# 通常改行をStreamlit上でも表示する
-formatted_result = formatted_result.replace("\n", "  \n")
+        # Streamlit上で通常の改行を維持
+        formatted_result = formatted_result.replace("\n", "  \n")
 
-st.info(formatted_result)
+        st.info(formatted_result)
 
 else:
     st.markdown(disclaimer_text, unsafe_allow_html=True)
