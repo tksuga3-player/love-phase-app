@@ -97,6 +97,11 @@ def format_diagnosis_result(raw_text):
             if cleaned_lines and cleaned_lines[-1] != "":
                 cleaned_lines.append("")
 
+# 誘導文の直前に空行を1行入れる
+if line.startswith("多くの男性は努力していないのではなく"):
+    if cleaned_lines and cleaned_lines[-1] != "":
+        cleaned_lines.append("")
+
         cleaned_lines.append(line)
 
     # 先頭・末尾の空行を削除
