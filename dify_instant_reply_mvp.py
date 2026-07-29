@@ -114,8 +114,12 @@ def display_diagnosis_result(result_text):
 
     formatted_result = format_diagnosis_result(result_text)
 
-    # AI回答を安全なHTML文字列へ変換
+    # HTMLとして安全な文字列に変換
     safe_result = html.escape(formatted_result)
+
+    # 改行をHTMLの<br>へ変換
+    # これにより「1.」がMarkdownリストとして解釈されなくなる
+    safe_result = safe_result.replace("\n", "<br>")
 
     answer_html = (
         '<div style="'
@@ -124,7 +128,6 @@ def display_diagnosis_result(result_text):
         'padding:20px;'
         'border-radius:10px;'
         'line-height:1.6;'
-        'white-space:pre-wrap;'
         'font-size:16px;'
         'overflow-wrap:anywhere;'
         '">'
@@ -132,7 +135,10 @@ def display_diagnosis_result(result_text):
         "</div>"
     )
 
-    st.markdown(answer_html, unsafe_allow_html=True)
+    st.markdown(
+        answer_html,
+        unsafe_allow_html=True
+    )
 
 
 # ==================================================
