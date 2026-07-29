@@ -75,18 +75,22 @@ disclaimer_text = "<div style='text-align: center; font-size: 12px; color: gray;
 if st.button("診断する", use_container_width=True, type="primary"):
     if len(user_consultation) < 20:
         st.error("診断には詳細な情報が必要です。もう少し具体的に状況を教えてください。")
-        # エラー時にも注意書きを表示
         st.markdown(disclaimer_text, unsafe_allow_html=True)
     else:
-        # 処理中にもボタンの下に注意書きを表示
         st.markdown(disclaimer_text, unsafe_allow_html=True)
-        
-        with st.spinner("進化心理学のデータベースと照合中... \nあなたの行動履歴からフェーズを計算しています（約10〜20秒かかります）"):
+
+        with st.spinner(
+            "進化心理学のデータベースと照合中... \n"
+            "あなたの行動履歴からフェーズを計算しています（約10〜20秒かかります）"
+        ):
             diagnosis_result = call_dify_api(user_consultation)
-        
+
         st.success("✅ 分析が完了しました。")
-        st.info(diagnosis_result)
-        
+
+        # Difyの改行を画面上でも維持する
+        formatted_result = diagnosis_result.replace("\n", "  \n")
+
+        st.info(formatted_result)
+
 else:
-    # 初期状態（ボタンが押される前）にボタンの下に表示
     st.markdown(disclaimer_text, unsafe_allow_html=True)
