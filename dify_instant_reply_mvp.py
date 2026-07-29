@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-import re
+import html
 import streamlit.components.v1 as components
 
 # --- Dify API設定 ---
@@ -93,17 +93,24 @@ if st.button("診断する", use_container_width=True, type="primary"):
 
         st.success("✅ 分析が完了しました。")
 
-        # 見出し直後の余分な空行だけ削除
-        formatted_result = re.sub(
-            r"(【[^】]+】)[ \t]*\n[ \t]*\n+",
-            r"\1\n",
-            diagnosis_result
+        # AI回答を安全なHTML文字列に変換
+        safe_result = html.escape(diagnosis_result)
+
+        # 改行をそのまま維持して、青い回答欄に表示
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #e8f2ff;
+                color: #0055a5;
+                padding: 20px;
+                border-radius: 10px;
+                line-height: 1.75;
+                white-space: pre-wrap;
+                font-size: 16px;
+            ">{safe_result}</div>
+            """,
+            unsafe_allow_html=True
         )
-
-        # Streamlit上で通常の改行を維持
-        formatted_result = formatted_result.replace("\n", "  \n")
-
-        st.info(formatted_result)
 
 else:
     st.markdown(disclaimer_text, unsafe_allow_html=True)
