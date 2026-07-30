@@ -308,7 +308,7 @@ def display_phase_chart(current_phase, phase_progress):
         background: #ffffff;
         border: 1px solid #bed3e8;
         border-radius: 10px;
-        padding: 17px 12px 14px;
+        padding: 17px 12px 24px;
     }}
 
     .chart-title {{
@@ -460,7 +460,7 @@ def display_phase_chart(current_phase, phase_progress):
 
     components.html(
         chart_html,
-        height=185,
+        height=225,
         scrolling=False,
     )
 
