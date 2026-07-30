@@ -222,7 +222,6 @@ def display_phase_chart(current_phase, phase_progress):
 
     phase_progress = max(0, min(99, phase_progress))
 
-    # フェーズ内の位置表示
     if phase_progress <= 30:
         progress_label = "前半"
     elif phase_progress <= 70:
@@ -230,21 +229,14 @@ def display_phase_chart(current_phase, phase_progress):
     else:
         progress_label = "後半"
 
-    # 4フェーズ全体のどの位置に矢印を置くか
+    # 全体における矢印位置
     marker_position = (
-        (
-            current_phase - 1
-            + phase_progress / 100
-        )
+        (current_phase - 1 + phase_progress / 100)
         / 4
         * 100
     )
 
-    # 左右へのはみ出し防止
-    marker_position = max(
-        3,
-        min(97, marker_position)
-    )
+    marker_position = max(3, min(97, marker_position))
 
     phase_data = [
         (1, "フェーズ1", "拒絶ライン"),
@@ -261,164 +253,215 @@ def display_phase_chart(current_phase, phase_progress):
             background = "#1268b3"
             text_color = "#ffffff"
             border_color = "#1268b3"
+
         elif phase_number < current_phase:
             background = "#dcecff"
             text_color = "#185b94"
             border_color = "#a7c9e9"
+
         else:
             background = "#f4f7fa"
             text_color = "#586979"
             border_color = "#d7dfe6"
 
         phase_cards += f"""
-        <div style="
-            min-width:0;
-            text-align:center;
-        ">
-            <div style="
-                box-sizing:border-box;
-                min-height:42px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background:{background};
-                color:{text_color};
-                border:1px solid {border_color};
-                border-radius:7px;
-                padding:7px 2px;
-                font-size:13px;
-                font-weight:700;
-                line-height:1.25;
-            ">
-                {phase_title}
-            </div>
+<div class="phase-item">
+    <div
+        class="phase-box"
+        style="
+            background:{background};
+            color:{text_color};
+            border-color:{border_color};
+        "
+    >
+        {phase_title}
+    </div>
 
-            <div style="
-                min-height:34px;
-                margin-top:5px;
-                color:#4d6275;
-                font-size:11px;
-                line-height:1.35;
-            ">
-                {phase_description}
-            </div>
-        </div>
-        """
+    <div class="phase-description">
+        {phase_description}
+    </div>
+</div>
+"""
 
     chart_html = f"""
-    <div style="
-        box-sizing:border-box;
-        width:100%;
-        background:#ffffff;
-        border:1px solid #bed3e8;
-        border-radius:10px;
-        padding:17px 12px 18px 12px;
-        margin:0 0 14px 0;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+
+<style>
+    html,
+    body {{
+        margin: 0;
+        padding: 0;
+        background: transparent;
         font-family:
             -apple-system,
             BlinkMacSystemFont,
-            'Segoe UI',
+            "Segoe UI",
             sans-serif;
-    ">
+    }}
 
-        <div style="
-            color:#07599c;
-            font-size:15px;
-            font-weight:700;
-            margin-bottom:14px;
-        ">
+    .phase-chart {{
+        box-sizing: border-box;
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid #bed3e8;
+        border-radius: 10px;
+        padding: 17px 12px 14px;
+    }}
+
+    .chart-title {{
+        color: #07599c;
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }}
+
+    .phase-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+    }}
+
+    .phase-item {{
+        min-width: 0;
+        text-align: center;
+    }}
+
+    .phase-box {{
+        box-sizing: border-box;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid;
+        border-radius: 7px;
+        padding: 7px 2px;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.25;
+    }}
+
+    .phase-description {{
+        min-height: 34px;
+        margin-top: 5px;
+        color: #4d6275;
+        font-size: 11px;
+        line-height: 1.35;
+    }}
+
+    .progress-area {{
+        position: relative;
+        height: 68px;
+        margin: 4px 3px 0;
+    }}
+
+    .progress-background {{
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 8px;
+        height: 4px;
+        background: #d5e0ea;
+        border-radius: 999px;
+    }}
+
+    .progress-completed {{
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: {marker_position}%;
+        height: 4px;
+        background: #1976bd;
+        border-radius: 999px;
+    }}
+
+    .marker {{
+        position: absolute;
+        left: {marker_position}%;
+        top: 2px;
+        width: 14px;
+        height: 14px;
+        background: #e04444;
+        border: 3px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+        transform: translateX(-50%);
+    }}
+
+    .marker-arrow {{
+        position: absolute;
+        left: {marker_position}%;
+        top: 21px;
+        transform: translateX(-50%);
+        color: #c93434;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1;
+    }}
+
+    .marker-label {{
+        position: absolute;
+        left: {marker_position}%;
+        top: 40px;
+        transform: translateX(-50%);
+        color: #b82f2f;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.3;
+        text-align: center;
+        white-space: nowrap;
+    }}
+
+    .marker-detail {{
+        color: #596b7a;
+        font-size: 11px;
+        font-weight: 500;
+    }}
+</style>
+</head>
+
+<body>
+    <div class="phase-chart">
+
+        <div class="chart-title">
             恋愛4フェーズ上の現在地
         </div>
 
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(4, minmax(0, 1fr));
-            gap:5px;
-        ">
+        <div class="phase-grid">
             {phase_cards}
         </div>
 
-        <div style="
-            position:relative;
-            height:64px;
-            margin:4px 3px 0 3px;
-        ">
+        <div class="progress-area">
 
-            <div style="
-                position:absolute;
-                left:0;
-                right:0;
-                top:8px;
-                height:4px;
-                background:#d5e0ea;
-                border-radius:999px;
-            "></div>
+            <div class="progress-background"></div>
 
-            <div style="
-                position:absolute;
-                left:0;
-                top:8px;
-                width:{marker_position}%;
-                height:4px;
-                background:#1976bd;
-                border-radius:999px;
-            "></div>
+            <div class="progress-completed"></div>
 
-            <div style="
-                position:absolute;
-                left:{marker_position}%;
-                top:3px;
-                width:14px;
-                height:14px;
-                background:#e04444;
-                border:3px solid #ffffff;
-                border-radius:50%;
-                box-shadow:0 1px 4px rgba(0, 0, 0, 0.22);
-                transform:translateX(-50%);
-            "></div>
+            <div class="marker"></div>
 
-            <div style="
-                position:absolute;
-                left:{marker_position}%;
-                top:21px;
-                transform:translateX(-50%);
-                color:#c93434;
-                font-size:18px;
-                font-weight:800;
-                line-height:1;
-            ">
+            <div class="marker-arrow">
                 ↑
             </div>
 
-            <div style="
-                position:absolute;
-                left:{marker_position}%;
-                top:39px;
-                transform:translateX(-50%);
-                color:#b82f2f;
-                font-size:12px;
-                font-weight:700;
-                line-height:1.3;
-                text-align:center;
-                white-space:nowrap;
-            ">
+            <div class="marker-label">
                 ここで詰まり
-                <span style="
-                    color:#596b7a;
-                    font-size:11px;
-                    font-weight:500;
-                ">
+                <span class="marker-detail">
                     （フェーズ{current_phase}{progress_label}）
                 </span>
             </div>
 
         </div>
     </div>
-    """
+</body>
+</html>
+"""
 
-    st.markdown(
+    components.html(
         chart_html,
-        unsafe_allow_html=True
+        height=185,
+        scrolling=False,
     )
 
 
