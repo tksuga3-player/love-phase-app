@@ -59,9 +59,100 @@ def call_dify_api(user_text):
         )
 
 
+# ==================================================
+# Difyの機械判定用データを読み取る
+# ==================================================
+
+def parse_phase_metadata(raw_text):
+    """
+    Dify回答から以下を取得する。
+
+    [[CURRENT_PHASE:3]]
+    [[PHASE_PROGRESS:65]]
+
+    機械判定用データは、表示する本文から削除する。
+    """
+
+    if not raw_text:
+        return None, None, ""
+
+    text = (
+        raw_text
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\u2028", "\n")
+        .replace("\u2029", "\n")
+        .replace("\u0085", "\n")
+    )
+
+    phase_match = re.search(
+        r"\[\[\s*CURRENT_PHASE\s*:\s*([1-4])\s*\]\]",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    progress_match = re.search(
+        r"\[\[\s*PHASE_PROGRESS\s*:\s*(\d{1,3})\s*\]\]",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    current_phase = None
+    phase_progress = None
+
+    if phase_match:
+        current_phase = int(phase_match.group(1))
+
+    if progress_match:
+        phase_progress = int(progress_match.group(1))
+        phase_progress = max(0, min(99, phase_progress))
+
+    # PHASE_PROGRESSが欠けた場合は、現在フェーズの中間に置く
+    if current_phase is not None and phase_progress is None:
+        phase_progress = 50
+
+    # 万一CURRENT_PHASEが欠けた場合、
+    # 通常本文の「現在地：フェーズ3」などから補完する
+    if current_phase is None:
+        visible_phase_match = re.search(
+            r"現在地[：:]\s*フェーズ\s*([1-4])",
+            text
+        )
+
+        if visible_phase_match:
+            current_phase = int(
+                visible_phase_match.group(1)
+            )
+            phase_progress = 50
+
+    # 機械判定用データを本文から削除
+    cleaned_text = re.sub(
+        r"\[\[\s*CURRENT_PHASE\s*:\s*[1-4]\s*\]\]",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    cleaned_text = re.sub(
+        r"\[\[\s*PHASE_PROGRESS\s*:\s*\d{1,3}\s*\]\]",
+        "",
+        cleaned_text,
+        flags=re.IGNORECASE,
+    )
+
+    cleaned_text = cleaned_text.strip()
+
+    return current_phase, phase_progress, cleaned_text
+
+
+# ==================================================
+# 診断結果本文の整形
+# ==================================================
+
 def format_diagnosis_result(raw_text):
     """
     表示ルール：
+
     ・見出しの直前だけ空行を1行入れる
     ・見出し直後には空行を入れない
     ・番号や箇条書きの間には空行を入れない
@@ -71,7 +162,6 @@ def format_diagnosis_result(raw_text):
     if not raw_text:
         return "回答を取得できませんでした。"
 
-    # 改行コードを統一
     text = (
         raw_text
         .replace("\r\n", "\n")
@@ -87,24 +177,25 @@ def format_diagnosis_result(raw_text):
     for original_line in original_lines:
         line = original_line.strip()
 
-        # 空白だけの行は削除
+        # 元の空行はいったん削除
         if not line:
             continue
 
-        # 見出しの直前に空行を1つ追加
+        # 見出しの直前に空行を1つ入れる
         if re.fullmatch(r"【[^】]+】", line):
             if cleaned_lines and cleaned_lines[-1] != "":
                 cleaned_lines.append("")
 
-        # 誘導文の直前に空行を1つ追加
-        if line.startswith("多くの男性は努力していないのではなく"):
+        # 有料診断への誘導文の直前に空行を1つ入れる
+        if line.startswith(
+            "多くの男性は努力していないのではなく"
+        ):
             if cleaned_lines and cleaned_lines[-1] != "":
                 cleaned_lines.append("")
 
-        # すべての通常行を追加
         cleaned_lines.append(line)
 
-    # 先頭と末尾の空行を削除
+    # 先頭と末尾の不要な空行を削除
     while cleaned_lines and cleaned_lines[0] == "":
         cleaned_lines.pop(0)
 
@@ -114,17 +205,245 @@ def format_diagnosis_result(raw_text):
     return "\n".join(cleaned_lines)
 
 
+# ==================================================
+# フェーズ図の表示
+# ==================================================
+
+def display_phase_chart(current_phase, phase_progress):
+    """
+    現在フェーズと、そのフェーズ内の位置を図で表示する。
+    """
+
+    if current_phase not in [1, 2, 3, 4]:
+        return
+
+    if phase_progress is None:
+        phase_progress = 50
+
+    phase_progress = max(0, min(99, phase_progress))
+
+    # フェーズ内の位置表示
+    if phase_progress <= 30:
+        progress_label = "前半"
+    elif phase_progress <= 70:
+        progress_label = "中盤"
+    else:
+        progress_label = "後半"
+
+    # 4フェーズ全体のどの位置に矢印を置くか
+    marker_position = (
+        (
+            current_phase - 1
+            + phase_progress / 100
+        )
+        / 4
+        * 100
+    )
+
+    # 左右へのはみ出し防止
+    marker_position = max(
+        3,
+        min(97, marker_position)
+    )
+
+    phase_data = [
+        (1, "フェーズ1", "拒絶ライン"),
+        (2, "フェーズ2", "安全ライン"),
+        (3, "フェーズ3", "男としての候補"),
+        (4, "フェーズ4", "長期伴侶ライン"),
+    ]
+
+    phase_cards = ""
+
+    for phase_number, phase_title, phase_description in phase_data:
+
+        if phase_number == current_phase:
+            background = "#1268b3"
+            text_color = "#ffffff"
+            border_color = "#1268b3"
+        elif phase_number < current_phase:
+            background = "#dcecff"
+            text_color = "#185b94"
+            border_color = "#a7c9e9"
+        else:
+            background = "#f4f7fa"
+            text_color = "#586979"
+            border_color = "#d7dfe6"
+
+        phase_cards += f"""
+        <div style="
+            min-width:0;
+            text-align:center;
+        ">
+            <div style="
+                box-sizing:border-box;
+                min-height:42px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                background:{background};
+                color:{text_color};
+                border:1px solid {border_color};
+                border-radius:7px;
+                padding:7px 2px;
+                font-size:13px;
+                font-weight:700;
+                line-height:1.25;
+            ">
+                {phase_title}
+            </div>
+
+            <div style="
+                min-height:34px;
+                margin-top:5px;
+                color:#4d6275;
+                font-size:11px;
+                line-height:1.35;
+            ">
+                {phase_description}
+            </div>
+        </div>
+        """
+
+    chart_html = f"""
+    <div style="
+        box-sizing:border-box;
+        width:100%;
+        background:#ffffff;
+        border:1px solid #bed3e8;
+        border-radius:10px;
+        padding:17px 12px 18px 12px;
+        margin:0 0 14px 0;
+        font-family:
+            -apple-system,
+            BlinkMacSystemFont,
+            'Segoe UI',
+            sans-serif;
+    ">
+
+        <div style="
+            color:#07599c;
+            font-size:15px;
+            font-weight:700;
+            margin-bottom:14px;
+        ">
+            恋愛4フェーズ上の現在地
+        </div>
+
+        <div style="
+            display:grid;
+            grid-template-columns:repeat(4, minmax(0, 1fr));
+            gap:5px;
+        ">
+            {phase_cards}
+        </div>
+
+        <div style="
+            position:relative;
+            height:64px;
+            margin:4px 3px 0 3px;
+        ">
+
+            <div style="
+                position:absolute;
+                left:0;
+                right:0;
+                top:8px;
+                height:4px;
+                background:#d5e0ea;
+                border-radius:999px;
+            "></div>
+
+            <div style="
+                position:absolute;
+                left:0;
+                top:8px;
+                width:{marker_position}%;
+                height:4px;
+                background:#1976bd;
+                border-radius:999px;
+            "></div>
+
+            <div style="
+                position:absolute;
+                left:{marker_position}%;
+                top:3px;
+                width:14px;
+                height:14px;
+                background:#e04444;
+                border:3px solid #ffffff;
+                border-radius:50%;
+                box-shadow:0 1px 4px rgba(0, 0, 0, 0.22);
+                transform:translateX(-50%);
+            "></div>
+
+            <div style="
+                position:absolute;
+                left:{marker_position}%;
+                top:21px;
+                transform:translateX(-50%);
+                color:#c93434;
+                font-size:18px;
+                font-weight:800;
+                line-height:1;
+            ">
+                ↑
+            </div>
+
+            <div style="
+                position:absolute;
+                left:{marker_position}%;
+                top:39px;
+                transform:translateX(-50%);
+                color:#b82f2f;
+                font-size:12px;
+                font-weight:700;
+                line-height:1.3;
+                text-align:center;
+                white-space:nowrap;
+            ">
+                ここで詰まり
+                <span style="
+                    color:#596b7a;
+                    font-size:11px;
+                    font-weight:500;
+                ">
+                    （フェーズ{current_phase}{progress_label}）
+                </span>
+            </div>
+
+        </div>
+    </div>
+    """
+
+    st.markdown(
+        chart_html,
+        unsafe_allow_html=True
+    )
+
+
+# ==================================================
+# 診断結果本文の表示
+# ==================================================
+
 def display_diagnosis_result(result_text):
     """整形した診断結果を青いボックス内に表示する。"""
 
-    formatted_result = format_diagnosis_result(result_text)
+    formatted_result = format_diagnosis_result(
+        result_text
+    )
 
     # HTMLとして安全な文字列に変換
-    safe_result = html.escape(formatted_result)
+    safe_result = html.escape(
+        formatted_result
+    )
 
     # 改行をHTMLの<br>へ変換
-    # これにより「1.」がMarkdownリストとして解釈されなくなる
-    safe_result = safe_result.replace("\n", "<br>")
+    # 「1.」がMarkdownリストとして処理されるのを防ぐ
+    safe_result = safe_result.replace(
+        "\n",
+        "<br>"
+    )
 
     answer_html = (
         '<div style="'
@@ -288,8 +607,22 @@ if diagnosis_button:
 
         st.success("✅ 分析が完了しました。")
 
+        current_phase, phase_progress, cleaned_result = (
+            parse_phase_metadata(
+                diagnosis_result
+            )
+        )
+
+        # フェーズ情報を取得できた場合だけ図を表示
+        if current_phase is not None:
+            display_phase_chart(
+                current_phase,
+                phase_progress
+            )
+
+        # 機械判定用データを除いた回答本文を表示
         display_diagnosis_result(
-            diagnosis_result
+            cleaned_result
         )
 
 else:
