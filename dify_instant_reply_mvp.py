@@ -308,7 +308,7 @@ def display_phase_chart(current_phase, phase_progress):
         background: #ffffff;
         border: 1px solid #bed3e8;
         border-radius: 10px;
-        padding: 17px 12px 24px;
+        padding: 17px 12px 20px;
     }}
 
     .chart-title {{
@@ -460,7 +460,7 @@ def display_phase_chart(current_phase, phase_progress):
 
     components.html(
         chart_html,
-        height=225,
+        height=210,
         scrolling=False,
     )
 
@@ -476,13 +476,38 @@ def display_diagnosis_result(result_text):
         result_text
     )
 
-    # HTMLとして安全な文字列に変換
+    diagnosis_url = (
+        "https://tksuga3-player.github.io/"
+        "diag-x7k2p9/diagnosis-pro/"
+    )
+
+    # 回答本文を安全なHTML文字列に変換
     safe_result = html.escape(
         formatted_result
     )
 
+    # 固定URLだけクリック可能なリンクへ変換
+    safe_url = html.escape(diagnosis_url)
+
+    clickable_url = (
+        f'<a href="{diagnosis_url}" '
+        'target="_blank" '
+        'rel="noopener noreferrer" '
+        'style="'
+        'color:#0055a5;'
+        'text-decoration:underline;'
+        'overflow-wrap:anywhere;'
+        '">'
+        f"{safe_url}"
+        "</a>"
+    )
+
+    safe_result = safe_result.replace(
+        safe_url,
+        clickable_url
+    )
+
     # 改行をHTMLの<br>へ変換
-    # 「1.」がMarkdownリストとして処理されるのを防ぐ
     safe_result = safe_result.replace(
         "\n",
         "<br>"
@@ -496,6 +521,16 @@ def display_diagnosis_result(result_text):
         'border-radius:10px;'
         'line-height:1.6;'
         'font-size:16px;'
+        'font-weight:400;'
+        'letter-spacing:normal;'
+        'font-family:-apple-system,'
+        'BlinkMacSystemFont,'
+        '\'Segoe UI\','
+        '\'Noto Sans JP\','
+        '\'Hiragino Kaku Gothic ProN\','
+        '\'Yu Gothic\','
+        'Meiryo,'
+        'sans-serif;'
         'overflow-wrap:anywhere;'
         '">'
         f"{safe_result}"
