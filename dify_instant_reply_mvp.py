@@ -553,6 +553,15 @@ st.set_page_config(
     layout="centered",
 )
 
+components.html(
+    """
+    <head>
+        <meta name="twitter:card" content="summary">
+    </head>
+    """,
+    height=0,
+    width=0,
+)
 
 # ==================================================
 # Chrome自動翻訳対策
